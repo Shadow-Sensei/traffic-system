@@ -43,6 +43,87 @@ body{
     margin:10px;
     cursor:pointer;
 }
+
+/* Density control panel */
+#densityPanel{
+    margin: 20px auto;
+    width: 600px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fff;
+    text-align: left;
+}
+
+#densityPanel h3{
+    margin: 0 0 12px 0;
+    text-align: center;
+    font-size: 16px;
+    color: #333;
+}
+
+.dpRow{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.dpRow label{
+    min-width: 120px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#sourceSelect{
+    padding: 6px 10px;
+    font-size: 14px;
+    flex: 1;
+}
+
+#switchSourceBtn{
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+#currentDensityBadge{
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 16px;
+    background: #eee;
+    color: #333;
+    min-width: 30px;
+    text-align: center;
+}
+
+#currentSourceLabel{
+    font-size: 13px;
+    color: #666;
+}
+
+#manualButtons{
+    display: none;
+    gap: 8px;
+}
+
+.manualBtn{
+    padding: 8px 22px;
+    font-size: 15px;
+    cursor: pointer;
+    border: 2px solid #aaa;
+    border-radius: 4px;
+    background: #f4f7fb;
+}
+
+.manualBtn.active{
+    background: #3a7bd5;
+    color: #fff;
+    border-color: #3a7bd5;
+}
 </style>
 </head>
 
@@ -92,7 +173,128 @@ View Received Packets
 
 </div>
 
+
+<!-- Density Control Panel -->
+<div id="densityPanel">
+
+<h3>Density Source Control</h3>
+
+<div class="dpRow">
+    <label>Current Density:</label>
+    <span id="currentDensityBadge">–</span>
+    <span id="currentSourceLabel">(source: –)</span>
+</div>
+
+<div class="dpRow">
+    <label>Switch Source:</label>
+    <select id="sourceSelect">
+        <option value="yolo">YOLO (video)</option>
+        <option value="ultrasonic">Ultrasonic (ESP32 sensor)</option>
+        <option value="manual">Manual simulation</option>
+    </select>
+    <button id="switchSourceBtn" onclick="switchSource()">Apply</button>
+</div>
+
+<div class="dpRow" id="manualButtons">
+    <label>Set Density:</label>
+    <button class="manualBtn" id="btnL" onclick="setManual('L')">Low (L)</button>
+    <button class="manualBtn" id="btnM" onclick="setManual('M')">Medium (M)</button>
+    <button class="manualBtn" id="btnH" onclick="setManual('H')">High (H)</button>
+</div>
+
+</div>
+
+
 <script src="{{ url_for('static', filename='map.js') }}"></script>
+
+<script>
+
+// ---------------------------------------------------------------------------
+// Density control panel logic
+// ---------------------------------------------------------------------------
+
+function updateDensityBadge(density, source){
+
+    var badge = document.getElementById("currentDensityBadge");
+    badge.innerText = density || "–";
+
+    var colors = { L: "#4caf50", M: "#ff9800", H: "#f44336" };
+    badge.style.background = colours[density] || "#eee";
+    badge.style.color = density ? "#fff" : "#333";
+
+    document.getElementById("currentSourceLabel").innerText =
+        source ? "(source: " + source + ")" : "(source: –)";
+
+    // Show/hide manual buttons
+    var manualRow = document.getElementById("manualButtons");
+    manualRow.style.display = source === "manual" ? "flex" : "none";
+
+    // Sync the dropdown to the active source
+    var sel = document.getElementById("sourceSelect");
+    if(source && sel.value !== source){
+        sel.value = source;
+    }
+
+}
+
+function refreshDensity(){
+
+    fetch("/density/current")
+    .then(res => res.json())
+    .then(data => {
+        updateDensityBadge(data.density, data.source);
+    })
+    .catch(() => {});
+
+}
+
+function switchSource(){
+
+    var source = document.getElementById("sourceSelect").value;
+
+    fetch("/density/source", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: source })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "ok"){
+            refreshDensity();
+        } else {
+            alert("Error: " + data.message);
+        }
+    });
+
+}
+
+function setManual(level){
+
+    fetch("/density/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ density: level })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "ok"){
+            // Highlight active button
+            ["L","M","H"].forEach(l => {
+                document.getElementById("btn" + l).classList.toggle("active", l === level);
+            });
+            refreshDensity();
+        } else {
+            alert("Error: " + data.message);
+        }
+    });
+
+}
+
+// Poll for current density every 3 seconds
+refreshDensity();
+setInterval(refreshDensity, 3000);
+
+</script>
 
 </body>
 </html>
