@@ -1,73 +1,31 @@
-from ultralytics import YOLO
-import cv2
-import numpy as np
+"""
+Legacy module – kept for backward compatibility and standalone visual preview.
 
-model = YOLO("yolov8n.pt")
-cap = cv2.VideoCapture("traffic.mp4")
+For production use the `density` package directly:
 
-lane_capacity = 8
+    import density
+    level = density.get_active_source().get_density()
+"""
 
-lane3 = np.array([
-    [899,447],
-    [431,118],
-    [346,120],
-    [663,483]
-])
+from density.base import density_level                        # noqa: F401  (re-exported)
+from density.yolo import YoloDensitySource, _get_model, _get_cap, _get_lane3
 
-
-def density_level(count):
-
-    if count <= 2:
-        return "L"
-
-    elif count <= 5:
-        return "M"
-
-    else:
-        return "H"
+_source = YoloDensitySource()
 
 
 def get_density():
-    """
-    Runs YOLO on one frame and returns density level
-    """
-
-    ret, frame = cap.read()
-
-    if not ret:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        ret, frame = cap.read()
-
-    results = model(frame)
-
-    vehicle_count = 0
-
-    for r in results:
-        for box in r.boxes:
-
-            cls = int(box.cls)
-            label = model.names[cls]
-
-            if label not in ["car", "truck", "bus", "motorcycle"]:
-                continue
-
-            x1,y1,x2,y2 = box.xyxy[0]
-
-            cx = int((x1+x2)/2)
-            cy = int((y1+y2)/2)
-
-            if cv2.pointPolygonTest(lane3,(cx,cy),False) >= 0:
-                vehicle_count += 1
-
-    density = density_level(vehicle_count)
-
-    return density
+    """Run YOLO on one video frame and return a density level."""
+    return _source.get_density()
 
 
 def run_preview():
-    """
-    Optional: run visual preview for debugging/demo
-    """
+    """Optional: run a visual preview for debugging/demo (requires a display)."""
+
+    import cv2
+
+    model = _get_model()
+    cap = _get_cap()
+    lane3 = _get_lane3()
 
     frame_count = 0
     lane_counts = [0]
@@ -77,10 +35,10 @@ def run_preview():
         ret, frame = cap.read()
 
         if not ret:
-            cap.set(cv2.CAP_PROP_POS_FRAMES,0)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             continue
 
-        cv2.polylines(frame,[lane3],True,(0,255,0),2)
+        cv2.polylines(frame, [lane3], True, (0, 255, 0), 2)
 
         frame_count += 1
 
@@ -95,34 +53,33 @@ def run_preview():
                     cls = int(box.cls)
                     label = model.names[cls]
 
-                    if label not in ["car","truck","bus","motorcycle"]:
+                    if label not in ["car", "truck", "bus", "motorcycle"]:
                         continue
 
-                    x1,y1,x2,y2 = box.xyxy[0]
+                    x1, y1, x2, y2 = box.xyxy[0]
 
-                    cx = int((x1+x2)/2)
-                    cy = int((y1+y2)/2)
+                    cx = int((x1 + x2) / 2)
+                    cy = int((y1 + y2) / 2)
 
-                    cv2.circle(frame,(cx,cy),4,(0,0,255),-1)
+                    cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
 
-                    if cv2.pointPolygonTest(lane3,(cx,cy),False) >= 0:
+                    if cv2.pointPolygonTest(lane3, (cx, cy), False) >= 0:
                         lane_counts[0] += 1
 
-
         count = lane_counts[0]
-        density = density_level(count)
+        level = density_level(count)
 
         cv2.putText(
             frame,
-            f"Lane3: {count} ({density})",
-            (20,40),
+            f"Lane3: {count} ({level})",
+            (20, 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
-            (0,255,0),
-            2
+            (0, 255, 0),
+            2,
         )
 
-        cv2.imshow("Traffic",frame)
+        cv2.imshow("Traffic", frame)
 
         if cv2.waitKey(1) == 27:
             break

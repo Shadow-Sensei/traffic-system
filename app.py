@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-import VehicleDensity
+import density
 import threading
 import time
 
@@ -19,14 +19,14 @@ current_density = "L"
 
 
 # -----------------------------
-# BACKGROUND YOLO DENSITY THREAD
+# BACKGROUND DENSITY THREAD
 # -----------------------------
 def density_updater():
     global current_density, last_density_sent
 
     while True:
         try:
-            current_density = VehicleDensity.get_density()
+            current_density = density.get_active_source().get_density()
 
             packet = "<D|" + current_density + "|" + SECRET_KEY + ">"
 
@@ -52,6 +52,8 @@ def density_updater():
             print("Density error:", e)
 
         time.sleep(3)
+
+
 # -----------------------------
 # HOME PAGE
 # -----------------------------
@@ -74,12 +76,12 @@ def receive_path():
     # convert numbers to string
     route = [str(x) for x in route]
 
-    density = current_density
-    print("Current Density:", density)
+    density_val = current_density
+    print("Current Density:", density_val)
 
     # -----------------------------
     # PRIORITY LOGIC
-    # RF (ambulance route) overrides ML
+    # RF (ambulance route) overrides density mode
     # -----------------------------
     if route:
 
@@ -90,10 +92,10 @@ def receive_path():
 
     else:
 
-        packet = "<D|" + density + "|" + SECRET_KEY + ">"
-        mode = "ML"
+        packet = "<D|" + density_val + "|" + SECRET_KEY + ">"
+        mode = density.get_active_source().name.upper()
 
-        print("ML DENSITY MODE")
+        print(f"{mode} DENSITY MODE")
 
     print("Generated Packet:", packet)
 
@@ -111,7 +113,7 @@ def receive_path():
         "status": "ok",
         "mode": mode,
         "packet": packet,
-        "density": density
+        "density": density_val
     })
 
 
@@ -129,6 +131,72 @@ def received():
 @app.route("/send")
 def send():
     return render_template("send_message.html")
+
+
+# -----------------------------
+# DENSITY SOURCE MANAGEMENT
+# -----------------------------
+
+@app.route("/density/source", methods=["GET"])
+def get_density_source():
+    """Return the currently active density source and all available sources."""
+    return jsonify({
+        "source": density.get_active_source().name,
+        "available": density.source_names(),
+    })
+
+
+@app.route("/density/source", methods=["POST"])
+def set_density_source():
+    """Switch the active density source.  Body: {"source": "yolo"|"ultrasonic"|"manual"}"""
+    data = request.get_json(silent=True) or {}
+    source = data.get("source", "")
+    try:
+        density.set_active_source(source)
+        return jsonify({"status": "ok", "source": source})
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/density/manual", methods=["POST"])
+def set_manual_density():
+    """
+    Set the manual density level and switch to manual mode.
+    Body: {"density": "L"|"M"|"H"}
+    """
+    data = request.get_json(silent=True) or {}
+    level = data.get("density", "")
+    try:
+        src = density.get_source("manual")
+        src.set_density(level)
+        density.set_active_source("manual")
+        return jsonify({"status": "ok", "density": level})
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/density/ultrasonic", methods=["POST"])
+def update_ultrasonic_density():
+    """
+    Receive a sensor reading from an ESP32 ultrasonic sensor.
+    Body: {"count": N}  or  {"distance_cm": D}
+    """
+    data = request.get_json(silent=True) or {}
+    try:
+        src = density.get_source("ultrasonic")
+        src.update(data)
+        return jsonify({"status": "ok", "density": src.get_density()})
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/density/current", methods=["GET"])
+def get_current_density():
+    """Return the current density level and active source (used by the UI)."""
+    return jsonify({
+        "density": current_density,
+        "source": density.get_active_source().name,
+    })
 
 
 # -----------------------------
