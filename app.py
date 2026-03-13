@@ -90,7 +90,7 @@ def receive_path():
 
     else:
 
-        packet = "<D|" + density + ">"
+        packet = "<D|" + density + "|" + SECRET_KEY + ">"
         mode = "ML"
 
         print("ML DENSITY MODE")
@@ -120,7 +120,7 @@ def receive_path():
 # -----------------------------
 @app.route("/received")
 def received():
-    return render_template("receieved.html", packets=received_packets)
+    return render_template("received.html", packets=received_packets)
 
 
 # -----------------------------
