@@ -1,0 +1,53 @@
+ <!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="refresh" content="2">
+<title>Received Packets</title>
+
+<style>
+
+body{
+    font-family: Arial;
+    text-align:center;
+}
+
+table{
+    margin:auto;
+    border-collapse: collapse;
+}
+
+td,th{
+    border:1px solid black;
+    padding:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Received Packets</h1>
+
+<table>
+
+<tr>
+<th>#</th>
+<th>Packet</th>
+</tr>
+
+{% for packet in packets %}
+
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ packet }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+
+</html>

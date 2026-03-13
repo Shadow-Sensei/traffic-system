@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Send Packet</title>
+
+<style>
+body{
+    font-family: Arial;
+    text-align: center;
+}
+
+input{
+    padding:10px;
+    font-size:16px;
+}
+
+button{
+    padding:10px 20px;
+    font-size:16px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Transmit Packet</h1>
+
+<p>Enter RF packet manually</p>
+
+<input id="packetInput" placeholder="<B,F>">
+
+<br><br>
+
+<button onclick="sendPacket()">Send Packet</button>
+
+<p id="status"></p>
+
+<script>
+
+function sendPacket(){
+
+let packet = document.getElementById("packetInput").value;
+
+fetch("/send_path",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+route: packet.replace(/[<>]/g,"").split(",")
+})
+})
+.then(res => res.json())
+.then(data=>{
+document.getElementById("status").innerText =
+"Packet Sent: " + data.packet;
+});
+
+}
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Emergency Traffic System</title>
+<style>
+
+
+
+body{
+    font-family: Arial;
+    text-align: center;
+     background-color:#f4f7fb;
+}
+
+.map{
+    margin-top:40px;
+}
+
+#mapContainer{
+    position: relative;
+    width: 800px;
+    margin: auto;
+}
+
+#mapImage{
+    width: 100%;
+}
+
+#mapCanvas{
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.buttonRow{
+    margin-top:20px;
+}
+
+.bigButton{
+    padding:15px 40px;
+    font-size:18px;
+    margin:10px;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Emergency Traffic Map</h1>
+
+<div id="mapContainer">
+
+<img src="{{ url_for('static', filename='RealMap.png') }}" id="mapImage">
+
+<canvas id="mapCanvas"></canvas>
+
+</div>
+
+
+<button onclick="clearRoute()">Clear Route</button>
+
+<div id="errorPopup" style="
+display:none;
+position:fixed;
+top:40%;
+left:50%;
+transform:translate(-50%,-50%);
+background:white;
+border:2px solid red;
+padding:20px;
+z-index:1000;
+">
+
+<p id="errorText"></p>
+
+<button onclick="retryRoute()">Retry</button>
+
+</div>
+
+
+<div class="buttonRow">
+
+<button class="bigButton" onclick="sendPacket()">
+Send Route
+</button>
+
+<button class="bigButton" onclick="window.location.href='/received'">
+View Received Packets
+</button>
+
+</div>
+
+<script src="{{ url_for('static', filename='map.js') }}"></script>
+
+</body>
+</html>
